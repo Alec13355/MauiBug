@@ -17,8 +17,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          # 10.0.50 is the last known-good version before the regression
-          dotnet-version: '10.0.100-preview.x'
+          dotnet-version: '10.0.x'
 
       - name: Install MAUI workload (pinned to last-good version)
         run: |
