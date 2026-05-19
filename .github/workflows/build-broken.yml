@@ -6,6 +6,7 @@ on:
     branches: [ main ]
     paths:
       - '.github/workflows/build-broken.yml'
+      - 'MauiBugRepro/**'
 
 # This workflow reproduces the regression introduced in MAUI 10.0.60.
 # The build fails with an error originating in Microsoft.Maui.targets around

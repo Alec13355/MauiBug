@@ -35,7 +35,7 @@ jobs:
           if [ "${{ matrix.use_rollback }}" = "true" ]; then
             echo "Installing with pinned version (last-good 10.0.50)"
             dotnet workload install maui-ios maui-android \
-              --version 10.0.50 \
+              --from-rollback-file workload-rollback-10.0.50.json \
               --source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet10/nuget/v3/index.json \
               --source https://api.nuget.org/v3/index.json
           else
