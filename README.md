@@ -9,8 +9,9 @@ The same error appears on **every** project — whether or not it uses pinned
 workloads — ruling out a local configuration issue.
 
 ```
-Last version that worked: 10.0.50
-Broken since:             10.0.60
+SDK version:              10.0.203 (pinned — same failure occurs on unpinned builds)
+Last MAUI workload that worked: 10.0.50
+Broken since:             10.0.60 (workload 26.5.10280)
 Affected platform:        iOS (net10.0-ios)
 Unaffected:               Android (net10.0-android)
 ```
