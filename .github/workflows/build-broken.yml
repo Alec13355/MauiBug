@@ -8,19 +8,24 @@ on:
       - '.github/workflows/build-broken.yml'
       - 'MauiBugRepro/**'
 
-# This workflow reproduces the regression introduced in MAUI 10.0.60.
-# The build fails with an error originating in Microsoft.Maui.targets around
-# workload version 26.5.10280. The same project built cleanly on 10.0.50.
+# This workflow reproduces the regression that started ~2-3 PM Central on 2026-05-18.
+# Affected: net10.0-ios on macos-26 runner; Android is unaffected.
 #
-# Upstream issue: https://github.com/dotnet/maui/issues/XXXXX
-# Affected: net10.0-ios only; Android is unaffected.
-# Root cause area: a breaking change in the MAUI iOS linker/targets in 10.0.60
-#   causes the build to fail even on projects that do NOT use pinned workloads,
-#   ruling out a local workload pin mismatch.
+# The build fails in Xamarin.Shared.targets(2091) / DetectSdkLocations with:
+#   System.TypeInitializationException → System.ArgumentNullException (Parameter 'path')
+#   at Xamarin.MacDev.AppleSdkSettings..cctor() (AppleSdkSettings.cs:145)
+#
+# The macos-26 runner ships with Xcode 26.5, which caused workload resolution to pull
+# Microsoft.iOS.Sdk.net10.0_26.5/26.5.10280. AppleSdkSettings fails to locate the
+# Xcode developer directory under that workload, returning null for the path.
+#
+# This affects projects both with and without pinned SDK/workload versions,
+# confirming the regression is in the workload pack itself, not project config.
+# Last known-good workload: 10.0.50 (see build-working.yml).
 
 jobs:
   build-ios:
-    runs-on: macos-15
+    runs-on: macos-26
 
     steps:
       - uses: actions/checkout@v4
@@ -32,8 +37,8 @@ jobs:
 
       - name: Install MAUI workload (latest - picks up broken 10.0.60)
         # No rollback file → resolves to whatever is current in the feed.
-        # As of 2026-05-xx this resolves to 10.0.60 / workload 26.5.10280
-        # which introduced the regression.
+        # On macos-26 as of 2026-05-18 this resolves to workload 26.5.10280,
+        # which introduced the AppleSdkSettings null-path regression.
         run: |
           dotnet workload install maui-ios maui-android \
             --source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet10/nuget/v3/index.json \
@@ -46,9 +51,9 @@ jobs:
         run: dotnet restore MauiBugRepro/MauiBugRepro.csproj
 
       - name: Build iOS (no codesign for CI)
-        # This step FAILS on 10.0.60 with an error in Microsoft.Maui.targets.
-        # The error is consistent across projects with and without pinned workloads,
-        # confirming the regression is in the workload itself, not the project config.
+        # This step FAILS on 10.0.60 / workload 26.5.10280 with DetectSdkLocations throwing
+        # ArgumentNullException in AppleSdkSettings. Consistent across pinned and unpinned
+        # workload projects, so the fault is in the workload pack, not project configuration.
         run: |
           dotnet build MauiBugRepro/MauiBugRepro.csproj \
             -f net10.0-ios \
