@@ -1,0 +1,71 @@
+name: Regression Bisect (10.0.50 vs 10.0.60)
+
+# Runs both versions in a matrix so the pass/fail contrast is visible
+# in a single Actions run. Useful for linking directly in a bug report.
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+    continue-on-error: true  # let the broken job finish so artifacts are uploaded
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: "10.0.50 (working)"
+            use_rollback: true
+          - label: "10.0.60 (broken)"
+            use_rollback: false
+
+    name: iOS - ${{ matrix.label }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.100-preview.x'
+
+      - name: Install MAUI workload - ${{ matrix.label }}
+        run: |
+          if [ "${{ matrix.use_rollback }}" = "true" ]; then
+            echo "Installing with rollback file (pins to last-good 10.0.50)"
+            dotnet workload install maui-ios \
+              --from-rollback-file https://aka.ms/dotnet/10.0.1xx/daily/MauiKnownGoodRollbackFile.json \
+              --source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet10/nuget/v3/index.json \
+              --source https://api.nuget.org/v3/index.json
+          else
+            echo "Installing latest (will pick up broken 10.0.60)"
+            dotnet workload install maui-ios \
+              --source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet10/nuget/v3/index.json \
+              --source https://api.nuget.org/v3/index.json
+          fi
+
+      - name: Show installed workload manifest versions
+        run: dotnet workload list
+
+      - name: Restore
+        run: dotnet restore MauiBugRepro/MauiBugRepro.csproj
+
+      - name: Build iOS
+        run: |
+          dotnet build MauiBugRepro/MauiBugRepro.csproj \
+            -f net10.0-ios \
+            -c Release \
+            /p:RuntimeIdentifier=ios-arm64 \
+            /p:CodesignKey="" \
+            /p:CodesignProvision="" \
+            /p:ArchiveOnBuild=false \
+            /p:EnableCodeSigning=false \
+            /bl:build-${{ matrix.use_rollback == 'true' && 'working' || 'broken' }}.binlog
+
+      - name: Upload binlog
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: binlog-${{ matrix.use_rollback == 'true' && 'working' || 'broken' }}
+          path: "*.binlog"

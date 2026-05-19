@@ -1,0 +1,67 @@
+name: iOS Build - Broken (10.0.60 regression)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/build-broken.yml'
+
+# This workflow reproduces the regression introduced in MAUI 10.0.60.
+# The build fails with an error originating in Microsoft.Maui.targets around
+# workload version 26.5.10280. The same project built cleanly on 10.0.50.
+#
+# Upstream issue: https://github.com/dotnet/maui/issues/XXXXX
+# Affected: net10.0-ios only; Android is unaffected.
+# Root cause area: a breaking change in the MAUI iOS linker/targets in 10.0.60
+#   causes the build to fail even on projects that do NOT use pinned workloads,
+#   ruling out a local workload pin mismatch.
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.100-preview.x'
+
+      - name: Install MAUI workload (latest - picks up broken 10.0.60)
+        # No rollback file → resolves to whatever is current in the feed.
+        # As of 2026-05-xx this resolves to 10.0.60 / workload 26.5.10280
+        # which introduced the regression.
+        run: |
+          dotnet workload install maui-ios \
+            --source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet10/nuget/v3/index.json \
+            --source https://api.nuget.org/v3/index.json
+
+      - name: Show installed workload versions (for diagnostics)
+        run: dotnet workload list
+
+      - name: Restore NuGet packages
+        run: dotnet restore MauiBugRepro/MauiBugRepro.csproj
+
+      - name: Build iOS (no codesign for CI)
+        # This step FAILS on 10.0.60 with an error in Microsoft.Maui.targets.
+        # The error is consistent across projects with and without pinned workloads,
+        # confirming the regression is in the workload itself, not the project config.
+        run: |
+          dotnet build MauiBugRepro/MauiBugRepro.csproj \
+            -f net10.0-ios \
+            -c Release \
+            /p:RuntimeIdentifier=ios-arm64 \
+            /p:CodesignKey="" \
+            /p:CodesignProvision="" \
+            /p:ArchiveOnBuild=false \
+            /p:EnableCodeSigning=false \
+            /bl:build-broken.binlog
+
+      - name: Upload build log (always — most useful when the build fails)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-broken-binlog
+          path: build-broken.binlog

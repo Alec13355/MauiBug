@@ -1,0 +1,50 @@
+name: iOS Build - Working (10.0.50)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/build-working.yml'
+
+jobs:
+  build-ios:
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          # 10.0.50 is the last known-good version before the regression
+          dotnet-version: '10.0.100-preview.x'
+
+      - name: Install MAUI workload (pinned to last-good version)
+        run: |
+          dotnet workload install maui-ios \
+            --from-rollback-file https://aka.ms/dotnet/10.0.1xx/daily/MauiKnownGoodRollbackFile.json \
+            --source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet10/nuget/v3/index.json \
+            --source https://api.nuget.org/v3/index.json
+
+      - name: Restore NuGet packages
+        run: dotnet restore MauiBugRepro/MauiBugRepro.csproj
+
+      - name: Build iOS (no codesign for CI)
+        run: |
+          dotnet build MauiBugRepro/MauiBugRepro.csproj \
+            -f net10.0-ios \
+            -c Release \
+            /p:RuntimeIdentifier=ios-arm64 \
+            /p:CodesignKey="" \
+            /p:CodesignProvision="" \
+            /p:ArchiveOnBuild=false \
+            /p:EnableCodeSigning=false \
+            /bl:build-working.binlog
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-working-binlog
+          path: build-working.binlog
