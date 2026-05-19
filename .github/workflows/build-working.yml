@@ -21,8 +21,8 @@ jobs:
 
       - name: Install MAUI workload (pinned to last-good version)
         run: |
-          dotnet workload install maui-ios \
-            --from-rollback-file https://aka.ms/dotnet/10.0.1xx/daily/MauiKnownGoodRollbackFile.json \
+          dotnet workload install maui-ios maui-android \
+            --version 10.0.50 \
             --source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet10/nuget/v3/index.json \
             --source https://api.nuget.org/v3/index.json
 

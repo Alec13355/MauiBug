@@ -34,7 +34,7 @@ jobs:
         # As of 2026-05-xx this resolves to 10.0.60 / workload 26.5.10280
         # which introduced the regression.
         run: |
-          dotnet workload install maui-ios \
+          dotnet workload install maui-ios maui-android \
             --source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet10/nuget/v3/index.json \
             --source https://api.nuget.org/v3/index.json
 

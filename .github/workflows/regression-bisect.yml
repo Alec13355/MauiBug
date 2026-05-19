@@ -33,14 +33,14 @@ jobs:
       - name: Install MAUI workload - ${{ matrix.label }}
         run: |
           if [ "${{ matrix.use_rollback }}" = "true" ]; then
-            echo "Installing with rollback file (pins to last-good 10.0.50)"
-            dotnet workload install maui-ios \
-              --from-rollback-file https://aka.ms/dotnet/10.0.1xx/daily/MauiKnownGoodRollbackFile.json \
+            echo "Installing with pinned version (last-good 10.0.50)"
+            dotnet workload install maui-ios maui-android \
+              --version 10.0.50 \
               --source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet10/nuget/v3/index.json \
               --source https://api.nuget.org/v3/index.json
           else
             echo "Installing latest (will pick up broken 10.0.60)"
-            dotnet workload install maui-ios \
+            dotnet workload install maui-ios maui-android \
               --source https://pkgs.dev.azure.com/dnceng/public/_packaging/dotnet10/nuget/v3/index.json \
               --source https://api.nuget.org/v3/index.json
           fi
